@@ -1,5 +1,1 @@
-streamlit
-ultralytics
-openai
-pillow
-opencv-python-headless
+google-generativeai

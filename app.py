@@ -1,34 +1,47 @@
 import streamlit as st
 from ultralytics import YOLO
 from PIL import Image
-import google.generativeai as genai  # Add this
+import google.generativeai as genai
 
-# Configure Gemini API
+# 1. Setup API
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
-# ... [Keep your YOLO loading and camera input code here] ...
+# 2. Load Model
+@st.cache_resource
+def load_model():
+    return YOLO('yolov8n.pt')
 
+model = load_model()
+
+# 3. Widget (This creates 'img_file')
+img_file = st.camera_input("Snap a photo of your item")
+
+# 4. Logic (Only run if img_file exists)
 if img_file:
-    # ... [Keep your object detection logic] ...
+    img = Image.open(img_file)
+    results = model(img)
+    
+    # Filter detections (Ignore person)
+    detected_items = []
+    for r in results:
+        for box in r.boxes:
+            class_id = int(box.cls[0])
+            label = model.names[class_id]
+            if label != 'person': 
+                detected_items.append(label)
+    
+    unique_items = list(set(detected_items))
     
     if unique_items:
         st.success(f"Detected: {', '.join(unique_items)}")
         
-        # New Gemini Logic
-        if st.button("✨ Generate Step-by-Step Upcycling Guide"):
-            try:
-                model = genai.GenerativeModel('gemini-1.5-flash')
-                prompt = (
-                    f"The camera detected: {', '.join(unique_items)}. "
-                    "Act as an expert Upcycling Assistant. Provide 3 detailed DIY projects. "
-                    "For each project, include: 1. Catchy Title, 2. Materials needed, 3. Numbered, detailed step-by-step instructions. Keep it encouraging!"
-                )
-                
-                with st.spinner("Brainstorming with Gemini..."):
-                    response = model.generate_content(prompt)
-                    st.markdown("---")
-                    st.subheader("🛠️ Your Upcycling Roadmap")
-                    st.write(response.text)
-                    
-            except Exception as e:
-                st.error(f"Error: {e}")
+        if st.button("✨ Get Step-by-Step Upcycling Guide"):
+            with st.spinner("Brainstorming with Gemini..."):
+                try:
+                    model_gen = genai.GenerativeModel('gemini-1.5-flash')
+                    prompt = (f"Items: {', '.join(unique_items)}. Provide 3 DIY projects. "
+                              "Include: 1. Title, 2. Materials, 3. Numbered steps.")
+                    response = model_gen.generate_content(prompt)
+                    st.markdown(response.text)
+                except Exception as e:
+                    st.error(f"Error: {e}")

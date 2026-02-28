@@ -38,7 +38,7 @@ if img_file:
         if st.button("✨ Get Step-by-Step Upcycling Guide"):
             with st.spinner("Brainstorming with Gemini..."):
                 try:
-                    model_gen = genai.GenerativeModel('gemini-1.5-flash')
+                    model_gen = genai.GenerativeModel('gemini-1.5-flash-latest')
                     prompt = (f"Items: {', '.join(unique_items)}. Provide 3 DIY projects. "
                               "Include: 1. Title, 2. Materials, 3. Numbered steps.")
                     response = model_gen.generate_content(prompt)

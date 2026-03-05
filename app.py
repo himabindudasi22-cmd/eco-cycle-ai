@@ -1,5 +1,11 @@
 import streamlit as st
 from ultralytics import YOLO
+from PIL import Image  # <--- THIS IS THE MISSING LINE
+import google.generativeai as genai
+
+# Your model loading code follows...
+import streamlit as st
+from ultralytics import YOLO
 # ... other imports ...
 
 # --- 1. Load your Model ---

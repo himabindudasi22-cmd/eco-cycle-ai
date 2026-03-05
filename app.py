@@ -7,7 +7,6 @@ import google.generativeai as genai
 # Replace 'YOUR_API_KEY' with your actual Gemini API Key
 genai.configure(api_key="YOUR_API_KEY")
 model_gemini = genai.GenerativeModel('gemini-1.5-flash')
-
 # Load the YOLO model (the "brain" for seeing objects)
 @st.cache_resource
 def load_yolo():

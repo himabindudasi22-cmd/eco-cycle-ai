@@ -3,70 +3,45 @@ from ultralytics import YOLO
 from PIL import Image
 import google.generativeai as genai
 
-# --- 1. SETUP ---
-# Replace 'YOUR_API_KEY' with your actual Gemini API Key
-genai.configure(api_key="YOUR_API_KEY")
-model_gemini = genai.GenerativeModel('gemini-1.5-flash')
-# Load the YOLO model (the "brain" for seeing objects)
+# 1. Setup API
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+
+# 2. Load Model
 @st.cache_resource
-def load_yolo():
+def load_model():
     return YOLO('yolov8n.pt')
 
-model = load_yolo()
+model = load_model()
 
-st.title("EcoCycle AI ♻️")
+# 3. Widget (This creates 'img_file')
+img_file = st.camera_input("Snap a photo of your item")
 
-# --- 2. CAMERA INPUT ---
-picture = st.camera_input("Take a picture of your item")
-
-if picture:
-    # Convert picture to a format YOLO understands
-    img = Image.open(picture)
-
-    # --- 3. DETECTION CODE ---
-    results = model.predict(source=img)
+# 4. Logic (Only run if img_file exists)
+if img_file:
+    img = Image.open(img_file)
+    results = model(img)
     
-    found_objects = []
+    # Filter detections (Ignore person)
+    detected_items = []
     for r in results:
         for box in r.boxes:
             class_id = int(box.cls[0])
             label = model.names[class_id]
-            found_objects.append(label)
+            if label != 'person': 
+                detected_items.append(label)
     
-    unique_objects = list(set(found_objects)) # Removes duplicates
-
-    # --- 4. SELECTION WIDGET ---
-    if unique_objects:
-        st.write("### I found these items!")
+    unique_items = list(set(detected_items))
+    
+    if unique_items:
+        st.success(f"Detected: {', '.join(unique_items)}")
         
-        user_selection = st.multiselect(
-            "Which one do you want to upcycle?", 
-            options=unique_objects
-        )
-
-        if user_selection:
-            st.success(f"Selected: {', '.join(user_selection)}")
-            
-            # --- 5. SEND TO GEMINI ---
-            # This button triggers the AI instructions
-            if st.button("✨ Get Step-by-Step Upcycling Guide"):
-                items_string = ", ".join(user_selection)
-                
-                prompt = f"""
-                I have the following items: {items_string}. 
-                Please provide 3 creative, eco-friendly upcycling projects. 
-                For each project, include:
-                - A catchy title
-                - A list of extra materials needed
-                - Clear step-by-step instructions
-                """
-                
-                with st.spinner("Thinking of creative ideas..."):
-                    try:
-                        response = model_gemini.generate_content(prompt)
-                        st.markdown("---")
-                        st.markdown(response.text)
-                    except Exception as e:
-                        st.error(f"Gemini Error: {e}")
-    else:
-        st.warning("I couldn't find any objects. Try moving the camera closer!")
+        if st.button("✨ Get Step-by-Step Upcycling Guide"):
+            with st.spinner("Brainstorming with Gemini..."):
+                try:
+                    model_gen = genai.GenerativeModel('gemini-2.5-flash')
+                    prompt = (f"Items: {', '.join(unique_items)}. Provide 3 DIY projects. "
+                              "Include: 1. Title, 2. Materials, 3. Numbered steps.")
+                    response = model_gen.generate_content(prompt)
+                    st.markdown(response.text)
+                except Exception as e:
+                    st.error(f"Error: {e}")

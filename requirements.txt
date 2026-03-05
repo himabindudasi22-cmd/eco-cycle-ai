@@ -4,4 +4,7 @@ openai
 pillow
 opencv-python-headless
 google-generativeai
+ultralytics
+opencv-python-headless
+streamlit
 

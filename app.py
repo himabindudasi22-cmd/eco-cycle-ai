@@ -1,47 +1,44 @@
 import streamlit as st
 from ultralytics import YOLO
-from PIL import Image
-import google.generativeai as genai
+# ... other imports ...
 
-# 1. Setup API
-genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+# --- 1. Load your Model ---
+model = YOLO('yolov8n.pt') 
 
-# 2. Load Model
-@st.cache_resource
-def load_model():
-    return YOLO('yolov8n.pt')
+# --- 2. The Camera/Upload Section ---
+picture = st.camera_input("Take a picture of your item")
 
-model = load_model()
+if picture:
+    # Convert picture to a format YOLO understands
+    img = Image.open(picture)
 
-# 3. Widget (This creates 'img_file')
-img_file = st.camera_input("Snap a photo of your item")
-
-# 4. Logic (Only run if img_file exists)
-if img_file:
-    img = Image.open(img_file)
-    results = model(img)
+    # --- 3. PASTE THE DETECTION CODE HERE ---
+    results = model.predict(source=img)
     
-    # Filter detections (Ignore person)
-    detected_items = []
+    found_objects = []
     for r in results:
         for box in r.boxes:
             class_id = int(box.cls[0])
             label = model.names[class_id]
-            if label != 'person': 
-                detected_items.append(label)
+            found_objects.append(label)
     
-    unique_items = list(set(detected_items))
-    
-    if unique_items:
-        st.success(f"Detected: {', '.join(unique_items)}")
+    unique_objects = list(set(found_objects)) # Removes duplicates
+
+    # --- 4. PASTE THE SELECTION WIDGET HERE ---
+    if unique_objects:
+        st.write("I found these items!")
         
-        if st.button("✨ Get Step-by-Step Upcycling Guide"):
-            with st.spinner("Brainstorming with Gemini..."):
-                try:
-                    model_gen = genai.GenerativeModel('gemini-2.5-flash')
-                    prompt = (f"Items: {', '.join(unique_items)}. Provide 3 DIY projects. "
-                              "Include: 1. Title, 2. Materials, 3. Numbered steps.")
-                    response = model_gen.generate_content(prompt)
-                    st.markdown(response.text)
-                except Exception as e:
-                    st.error(f"Error: {e}")
+        # This creates the box for you to click
+        user_selection = st.multiselect(
+            "Which one do you want to upcycle?", 
+            options=unique_objects
+        )
+
+        if user_selection:
+            st.success(f"Selected: {', '.join(user_selection)}")
+            
+            # --- 5. SEND TO GEMINI ---
+            # Now you can use 'user_selection' in your prompt to Gemini
+            # Example: "How can I upcycle a " + str(user_selection) + "?"
+    else:
+        st.warning("I couldn't find any objects. Try moving the camera closer!")
